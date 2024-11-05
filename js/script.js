@@ -13,6 +13,7 @@ const regions = {
   otros: { id: 10, offset: 1000, limit: 50 } // Ajustar según sea necesario
 };
 
+// Modificación en loadRegion para contar los checkboxes marcados y actualizar el título
 async function loadRegion(region, listId) {
   const regionData = regions[region];
   const response = await fetch(`https://pokeapi.co/api/v2/pokemon?offset=${regionData.offset}&limit=${regionData.limit}`);
@@ -23,6 +24,8 @@ async function loadRegion(region, listId) {
 
   const pokemonList = await Promise.all(data.results.map(pokemon => fetchPokemonData(pokemon.name)));
   pokemonList.sort((a, b) => a.id - b.id);
+
+  let checkedCount = 0;
 
   pokemonList.forEach(pokemonData => {
     const listItem = document.createElement('li');
@@ -35,6 +38,10 @@ async function loadRegion(region, listId) {
     checkbox.value = pokemonData.name;
     checkbox.checked = localStorage.getItem(checkbox.id) === 'true';
 
+    if (checkbox.checked) {
+      checkedCount++;
+    }
+
     const img = document.createElement('img');
     img.src = checkbox.checked ? pokemonData.sprites.front_shiny : pokemonData.sprites.front_default;
     img.alt = pokemonData.name;
@@ -44,6 +51,7 @@ async function loadRegion(region, listId) {
       localStorage.setItem(checkbox.id, checkbox.checked);
       listItem.classList.toggle('checked', checkbox.checked);
       img.src = checkbox.checked ? pokemonData.sprites.front_shiny : pokemonData.sprites.front_default;
+      updateRegionTitle(region);
     });
 
     const label = document.createElement('label');
@@ -54,54 +62,22 @@ async function loadRegion(region, listId) {
     listItem.appendChild(checkbox);
     listItem.appendChild(label);
 
-    // Añadir las formas del Pokémon, incluyendo mega evoluciones
-    if (pokemonData.forms && pokemonData.forms.length > 1) {
-      const formsContainer = document.createElement('div');
-      formsContainer.classList.add('forms-container');
-
-      pokemonData.forms.forEach(form => {
-        if (form.name.includes("mega")) { // Incluir solo las formas de mega evolución
-          const formItem = document.createElement('div');
-          formItem.classList.add('form-item');
-
-          const formCheckbox = document.createElement('input');
-          formCheckbox.type = 'checkbox';
-          formCheckbox.id = `shiny-${region}-${form.id}`;
-          formCheckbox.name = `shiny-${region}-${form.id}`;
-          formCheckbox.value = form.name;
-          formCheckbox.checked = localStorage.getItem(formCheckbox.id) === 'true';
-
-          const formImg = document.createElement('img');
-          formImg.src = formCheckbox.checked ? form.sprites.front_shiny : form.sprites.front_default;
-          formImg.alt = form.name;
-          formImg.classList.add('pokemon-image');
-
-          formCheckbox.addEventListener('change', function() {
-            localStorage.setItem(formCheckbox.id, formCheckbox.checked);
-            formItem.classList.toggle('checked', formCheckbox.checked);
-            formImg.src = formCheckbox.checked ? form.sprites.front_shiny : form.sprites.front_default;
-          });
-
-          const formLabel = document.createElement('label');
-          formLabel.htmlFor = formCheckbox.id;
-          formLabel.textContent = `${form.nameEs} (${form.name})`;
-
-          formItem.appendChild(formImg);
-          formItem.appendChild(formCheckbox);
-          formItem.appendChild(formLabel);
-          formsContainer.appendChild(formItem);
-        }
-      });
-
-      listItem.appendChild(formsContainer);
-    }
-
     listElement.appendChild(listItem);
 
     if (checkbox.checked) {
       listItem.classList.add('checked');
     }
   });
+
+  updateRegionTitle(region);
+}
+
+// Nueva función para actualizar el título de cada región
+function updateRegionTitle(region) {
+  const titleElement = document.querySelector(`#${region} h2`);
+  const checkboxes = document.querySelectorAll(`#${region} input[type="checkbox"]`);
+  const checkedCount = Array.from(checkboxes).filter(checkbox => checkbox.checked).length;
+  titleElement.textContent = `${region.charAt(0).toUpperCase() + region.slice(1)} (${checkedCount}/${checkboxes.length})`;
 }
 
 async function fetchPokemonData(pokemonName) {
